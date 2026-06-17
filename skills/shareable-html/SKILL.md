@@ -57,6 +57,26 @@ Custom JavaScript is allowed for page-specific functionality. Keep persistence s
 - Use local uploaded JS files such as `app.js` for filtering, sorting, charts, validation, and derived summaries.
 - Do not embed secrets, API keys, or private tokens.
 
+## Choices And Comments
+
+Use native radio/select inputs for simple choices. Use visual choice cards for image/design decisions:
+
+```html
+<button type="button" data-choice-field="positions.0.selectedIllustration" data-choice-value="illustration-a">
+  <img src="assets/illustration-a.png" alt="">
+</button>
+```
+
+The SDK saves the selected value and adds `is-selected` to the active card.
+
+The SDK also provides a sticky toolbar with title, expiry, save status, and comment mode. Any `data-field` or `data-choice-field` can receive comments. For comments on a larger non-input element, add:
+
+```html
+<section data-comment-id="homepage-hero">...</section>
+```
+
+Comments are saved in `_comments` in shared JSON state.
+
 ## MCP Tools
 
 - `create_document`: upload HTML or a full mini-site.

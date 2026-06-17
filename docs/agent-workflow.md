@@ -62,6 +62,30 @@ Custom JavaScript is allowed and expected for richer one-off tools. Keep persist
 - Use local JS for sorting, filtering, conditional sections, charts, computed summaries, and validation.
 - Never include secrets or API keys in uploaded JS.
 
+## Choice Interfaces
+
+When users need to choose one item from several visual options, use either radios with the same `data-field` or visual cards:
+
+```html
+<button type="button" data-choice-field="illustrations.hero" data-choice-value="option-a">
+  <img src="assets/hero-a.png" alt="">
+</button>
+```
+
+The selected value is saved to the shared JSON state. Agents should initialize these fields with a clear default or an empty string.
+
+## Comments
+
+The hosted SDK adds a sticky toolbar with document title, expiry, save status, comment mode, and comment count.
+
+Any persisted field can receive comments automatically. For non-input elements, add a stable comment id:
+
+```html
+<div data-comment-id="pricing-table-row-3">...</div>
+```
+
+Comments are stored in `_comments` and remain available through `get_document_state`.
+
 ## Review Completion
 
 When the user says the review is complete:

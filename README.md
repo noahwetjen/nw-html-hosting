@@ -193,6 +193,36 @@ Rules for custom JavaScript:
 - Do not depend on cookies or login state.
 - Keep external third-party scripts minimal; uploaded local JS is preferred.
 
+### Choices And Comments
+
+For “choose one of several options” interfaces, use either native radio controls:
+
+```html
+<label><input type="radio" name="hero" value="variant-a" data-field="hero.choice"> Variant A</label>
+<label><input type="radio" name="hero" value="variant-b" data-field="hero.choice"> Variant B</label>
+```
+
+Or use visual choice cards:
+
+```html
+<button type="button" data-choice-field="hero.choice" data-choice-value="variant-a">
+  <img src="assets/hero-a.png" alt="">
+</button>
+<button type="button" data-choice-field="hero.choice" data-choice-value="variant-b">
+  <img src="assets/hero-b.png" alt="">
+</button>
+```
+
+The SDK marks the selected card with `is-selected` and saves the selected value to JSON.
+
+The SDK also adds a sticky document toolbar. It shows the document title, expiry status, save status, and comment count. Any element with `data-field`, `data-choice-field`, or explicit `data-comment-id` can receive comments. Comments are stored in shared state under `_comments`.
+
+```html
+<section data-comment-id="hero-illustration-decision">
+  ...
+</section>
+```
+
 ## MCP
 
 Remote Streamable HTTP MCP endpoint:

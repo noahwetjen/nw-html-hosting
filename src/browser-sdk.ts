@@ -2,11 +2,15 @@ export const agentHtmlSdk = String.raw`(() => {
   const documentId = location.pathname.match(/^\/d\/([^/]+)/)?.[1];
   if (!documentId) return;
 
-  const endpoint = '/api/public/documents/' + encodeURIComponent(documentId) + '/state';
+  const stateEndpoint = '/api/public/documents/' + encodeURIComponent(documentId) + '/state';
+  const metadataEndpoint = '/api/public/documents/' + encodeURIComponent(documentId);
   let state = {};
+  let metadata = null;
   let dirtyFields = {};
   let saveTimer = null;
   let saving = false;
+  let commentMode = false;
+  let activeCommentTarget = null;
 
   function parsePath(path) {
     return path
@@ -93,6 +97,9 @@ export const agentHtmlSdk = String.raw`(() => {
     document.querySelectorAll('[data-field]').forEach((element) => {
       writeElement(element, getNested(state, element.dataset.field));
     });
+    refreshChoiceControls();
+    refreshCommentMarkers();
+    refreshToolbar();
     document.dispatchEvent(new CustomEvent('agent-html-state-loaded', { detail: { state } }));
   }
 
@@ -100,10 +107,22 @@ export const agentHtmlSdk = String.raw`(() => {
     document.querySelectorAll('[data-save-status]').forEach((element) => {
       element.textContent = text;
     });
+    const toolbarStatus = document.querySelector('[data-agent-toolbar-status]');
+    if (toolbarStatus) toolbarStatus.textContent = text;
+  }
+
+  async function loadMetadata() {
+    const response = await fetch(metadataEndpoint, { headers: { accept: 'application/json' } });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    metadata = payload.document || null;
+    refreshToolbar();
+    return metadata;
   }
 
   async function load() {
-    const response = await fetch(endpoint, { headers: { accept: 'application/json' } });
+    await loadMetadata().catch(console.error);
+    const response = await fetch(stateEndpoint, { headers: { accept: 'application/json' } });
     if (!response.ok) throw new Error('Could not load document state');
     const payload = await response.json();
     applyState(payload.state || {});
@@ -118,7 +137,7 @@ export const agentHtmlSdk = String.raw`(() => {
     const fields = collectDirtyFields();
     const body = JSON.stringify({ fields });
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(stateEndpoint, {
         method: Object.keys(fields).length > 0 ? 'PATCH' : 'PUT',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: Object.keys(fields).length > 0 ? body : JSON.stringify({ state })
@@ -134,6 +153,12 @@ export const agentHtmlSdk = String.raw`(() => {
     }
   }
 
+  function markDirty(path, value) {
+    dirtyFields[path] = value;
+    setNested(state, path, value);
+    scheduleSave();
+  }
+
   function scheduleSave() {
     setStatus('Unsaved');
     clearTimeout(saveTimer);
@@ -145,11 +170,220 @@ export const agentHtmlSdk = String.raw`(() => {
     }, 500);
   }
 
+  function setupToolbar() {
+    if (document.body.dataset.agentToolbar === 'off' || document.querySelector('.agent-html-toolbar')) return;
+    injectToolbarStyles();
+    const toolbar = document.createElement('div');
+    toolbar.className = 'agent-html-toolbar';
+    toolbar.innerHTML = [
+      '<div class="agent-html-toolbar-main">',
+      '<strong data-agent-toolbar-title>Document</strong>',
+      '<span data-agent-toolbar-expiry></span>',
+      '</div>',
+      '<div class="agent-html-toolbar-actions">',
+      '<span data-agent-toolbar-status>Loading...</span>',
+      '<button type="button" data-agent-comment-mode>Comment</button>',
+      '<span data-agent-comment-count>0 comments</span>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(toolbar);
+    toolbar.querySelector('[data-agent-comment-mode]').addEventListener('click', () => {
+      setCommentMode(!commentMode);
+    });
+  }
+
+  function refreshToolbar() {
+    const title = document.querySelector('[data-agent-toolbar-title]');
+    const expiry = document.querySelector('[data-agent-toolbar-expiry]');
+    const count = document.querySelector('[data-agent-comment-count]');
+    const button = document.querySelector('[data-agent-comment-mode]');
+    if (title) title.textContent = metadata?.title || document.title || 'Document';
+    if (expiry) {
+      expiry.textContent = metadata?.expiresAt
+        ? 'Expires ' + new Date(metadata.expiresAt).toLocaleString()
+        : 'No expiry';
+    }
+    if (count) {
+      const comments = getAllComments();
+      count.textContent = comments.length + (comments.length === 1 ? ' comment' : ' comments');
+    }
+    if (button) button.classList.toggle('is-active', commentMode);
+  }
+
+  function setCommentMode(enabled) {
+    commentMode = enabled;
+    document.body.classList.toggle('agent-html-comment-mode', enabled);
+    refreshToolbar();
+  }
+
+  function commentKeyFor(element) {
+    const target = element.closest('[data-comment-id], [data-field], [data-choice-field]');
+    if (!target) return null;
+    return target.dataset.commentId || target.dataset.field || target.dataset.choiceField;
+  }
+
+  function commentsPath(key) {
+    return '_comments.' + encodeURIComponent(key);
+  }
+
+  function getComments(key) {
+    const comments = getNested(state, commentsPath(key));
+    return Array.isArray(comments) ? comments : [];
+  }
+
+  function getAllComments() {
+    const container = state && typeof state === 'object' ? state._comments : null;
+    if (!container || typeof container !== 'object') return [];
+    return Object.values(container).flatMap((value) => Array.isArray(value) ? value : []);
+  }
+
+  function saveComments(key, comments) {
+    markDirty(commentsPath(key), comments);
+    refreshCommentMarkers();
+    refreshToolbar();
+  }
+
+  function refreshCommentMarkers() {
+    document.querySelectorAll('.agent-html-comment-target').forEach((element) => {
+      element.classList.remove('agent-html-comment-target', 'agent-html-has-comments');
+    });
+    document.querySelectorAll('[data-comment-id], [data-field], [data-choice-field]').forEach((element) => {
+      const key = commentKeyFor(element);
+      if (!key) return;
+      element.classList.add('agent-html-comment-target');
+      element.classList.toggle('agent-html-has-comments', getComments(key).length > 0);
+    });
+  }
+
+  function openCommentPopover(element) {
+    const key = commentKeyFor(element);
+    if (!key) return;
+    activeCommentTarget = key;
+    closeCommentPopover();
+    const popover = document.createElement('div');
+    popover.className = 'agent-html-comment-popover';
+    popover.dataset.commentPopover = key;
+    renderCommentPopover(popover, key);
+    document.body.appendChild(popover);
+    const rect = element.getBoundingClientRect();
+    const top = Math.min(window.innerHeight - 280, Math.max(12, rect.bottom + 8));
+    const left = Math.min(window.innerWidth - 340, Math.max(12, rect.left));
+    popover.style.top = top + 'px';
+    popover.style.left = left + 'px';
+  }
+
+  function closeCommentPopover() {
+    document.querySelectorAll('.agent-html-comment-popover').forEach((element) => element.remove());
+  }
+
+  function renderCommentPopover(popover, key) {
+    const comments = getComments(key);
+    popover.innerHTML = [
+      '<div class="agent-html-comment-head">',
+      '<strong>Comments</strong>',
+      '<button type="button" data-comment-close>×</button>',
+      '</div>',
+      '<div class="agent-html-comment-list">',
+      comments.length === 0 ? '<p>No comments yet.</p>' : comments.map((comment) => (
+        '<div class="agent-html-comment-item" data-comment-id="' + comment.id + '">' +
+        '<textarea data-comment-edit>' + escapeTextarea(comment.text || '') + '</textarea>' +
+        '<div><button type="button" data-comment-update>Update</button><button type="button" data-comment-delete>Delete</button></div>' +
+        '</div>'
+      )).join(''),
+      '</div>',
+      '<textarea data-comment-new placeholder="Add a comment"></textarea>',
+      '<button type="button" data-comment-add>Add comment</button>'
+    ].join('');
+    popover.querySelector('[data-comment-close]').addEventListener('click', closeCommentPopover);
+    popover.querySelector('[data-comment-add]').addEventListener('click', () => {
+      const textarea = popover.querySelector('[data-comment-new]');
+      const text = textarea.value.trim();
+      if (!text) return;
+      const next = getComments(key).concat([{ id: createId(), text, createdAt: new Date().toISOString() }]);
+      saveComments(key, next);
+      renderCommentPopover(popover, key);
+    });
+    popover.querySelectorAll('[data-comment-update]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = button.closest('[data-comment-id]');
+        const text = item.querySelector('[data-comment-edit]').value.trim();
+        const next = getComments(key).map((comment) => comment.id === item.dataset.commentId
+          ? { ...comment, text, updatedAt: new Date().toISOString() }
+          : comment);
+        saveComments(key, next);
+        renderCommentPopover(popover, key);
+      });
+    });
+    popover.querySelectorAll('[data-comment-delete]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = button.closest('[data-comment-id]');
+        const next = getComments(key).filter((comment) => comment.id !== item.dataset.commentId);
+        saveComments(key, next);
+        renderCommentPopover(popover, key);
+      });
+    });
+  }
+
+  function createId() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function escapeTextarea(value) {
+    return String(value).replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]));
+  }
+
+  function refreshChoiceControls() {
+    document.querySelectorAll('[data-choice-field][data-choice-value]').forEach((element) => {
+      const active = String(getNested(state, element.dataset.choiceField)) === String(element.dataset.choiceValue);
+      element.classList.toggle('is-selected', active);
+      element.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function handleChoiceClick(element) {
+    const field = element.dataset.choiceField;
+    const value = element.dataset.choiceValue;
+    if (!field) return;
+    markDirty(field, value);
+    refreshChoiceControls();
+  }
+
+  function injectToolbarStyles() {
+    if (document.querySelector('[data-agent-html-sdk-styles]')) return;
+    const style = document.createElement('style');
+    style.dataset.agentHtmlSdkStyles = 'true';
+    style.textContent = [
+      '.agent-html-toolbar{position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483000;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(31,41,55,.18);border-radius:8px;background:rgba(255,255,255,.96);box-shadow:0 12px 40px rgba(15,23,42,.16);backdrop-filter:blur(10px);font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827}',
+      '.agent-html-toolbar-main,.agent-html-toolbar-actions{display:flex;align-items:center;gap:10px;min-width:0}',
+      '.agent-html-toolbar-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:42vw}',
+      '.agent-html-toolbar button{border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#111827;padding:6px 8px;cursor:pointer}',
+      '.agent-html-toolbar button.is-active{background:#0b6bcb;border-color:#0b6bcb;color:#fff}',
+      '.agent-html-comment-target{position:relative}',
+      '.agent-html-comment-target.agent-html-has-comments{outline:2px solid rgba(11,107,203,.35);outline-offset:2px}',
+      '.agent-html-comment-target.agent-html-has-comments::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:999px;background:#0b6bcb;box-shadow:0 0 0 2px #fff}',
+      '.agent-html-comment-mode .agent-html-comment-target{cursor:comment}',
+      '.agent-html-comment-popover{position:fixed;z-index:2147483001;width:min(320px,calc(100vw - 24px));max-height:min(420px,calc(100vh - 24px));overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff;box-shadow:0 14px 40px rgba(15,23,42,.22);padding:10px;font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827}',
+      '.agent-html-comment-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}',
+      '.agent-html-comment-head button{border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer}',
+      '.agent-html-comment-list{display:grid;gap:8px;margin-bottom:8px}',
+      '.agent-html-comment-list p{margin:0;color:#6b7280}',
+      '.agent-html-comment-item{display:grid;gap:6px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;background:#f9fafb}',
+      '.agent-html-comment-item div{display:flex;gap:6px;justify-content:flex-end}',
+      '.agent-html-comment-popover textarea{width:100%;min-height:54px;resize:vertical;border:1px solid #d1d5db;border-radius:6px;padding:7px;font:inherit}',
+      '.agent-html-comment-popover button{border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#111827;padding:5px 7px;cursor:pointer}',
+      '[data-choice-field][data-choice-value]{cursor:pointer}',
+      '[data-choice-field][data-choice-value].is-selected{outline:3px solid #0b6bcb;outline-offset:2px}',
+      '@media(max-width:720px){.agent-html-toolbar{left:8px;right:8px;bottom:8px;align-items:flex-start;flex-direction:column}.agent-html-toolbar-main strong{max-width:calc(100vw - 48px)}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
   window.AgentHtmlState = {
     load,
     save,
     getState: () => structuredClone(state),
-    setState: applyState
+    setState: applyState,
+    getMetadata: () => metadata ? structuredClone(metadata) : null
   };
 
   document.addEventListener('input', (event) => {
@@ -167,6 +401,18 @@ export const agentHtmlSdk = String.raw`(() => {
   });
 
   document.addEventListener('click', (event) => {
+    const choice = event.target?.closest?.('[data-choice-field][data-choice-value]');
+    if (choice) {
+      event.preventDefault();
+      handleChoiceClick(choice);
+      return;
+    }
+    const commentTarget = event.target?.closest?.('[data-comment-id], [data-field], [data-choice-field]');
+    if (commentMode && commentTarget) {
+      event.preventDefault();
+      openCommentPopover(commentTarget);
+      return;
+    }
     if (event.target?.closest?.('[data-save]')) {
       event.preventDefault();
       save().catch((error) => {
@@ -176,9 +422,27 @@ export const agentHtmlSdk = String.raw`(() => {
     }
   });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => load().catch(console.error));
-  } else {
+  document.addEventListener('mouseover', (event) => {
+    const target = event.target?.closest?.('.agent-html-has-comments');
+    if (!target || commentMode || document.querySelector('.agent-html-comment-popover')) return;
+    openCommentPopover(target);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeCommentPopover();
+      setCommentMode(false);
+    }
+  });
+
+  function start() {
+    setupToolbar();
     load().catch(console.error);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 })();`;

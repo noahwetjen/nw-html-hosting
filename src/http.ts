@@ -123,6 +123,27 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
     }
   });
 
+  app.get('/api/public/documents/:id', async (req, res, next) => {
+    try {
+      const document = await documents.getPublic(requiredParam(req, 'id'));
+      res.json({
+        document: {
+          id: document.id,
+          title: document.title,
+          url: document.url,
+          entryPath: document.entryPath,
+          expiresAt: document.expiresAt,
+          isExpired: document.isExpired,
+          isPublic: document.isPublic,
+          createdAt: document.createdAt,
+          updatedAt: document.updatedAt
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.put('/api/public/documents/:id/state', async (req, res, next) => {
     try {
       const body = stateBodySchema.parse(req.body);
