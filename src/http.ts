@@ -262,11 +262,30 @@ async function sendAsset(db: Database, documentId: string, assetPath: string, re
 
   if (isHtmlPath(asset.path)) {
     const html = asset.content.toString('utf8');
-    res.send(injectSdk(html));
+    res.send(injectHtmlShell(html, documentId));
     return;
   }
 
   res.send(asset.content);
+}
+
+function injectHtmlShell(html: string, documentId: string): string {
+  let nextHtml = injectBase(html, documentId);
+  nextHtml = injectSdk(nextHtml);
+  return nextHtml;
+}
+
+function injectBase(html: string, documentId: string): string {
+  if (/<base\s/i.test(html)) {
+    return html;
+  }
+
+  const base = `<base href="/d/${encodeURIComponent(documentId)}/">`;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (match) => `${match}${base}`);
+  }
+
+  return `${base}\n${html}`;
 }
 
 function injectSdk(html: string): string {
