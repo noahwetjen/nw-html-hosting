@@ -242,9 +242,9 @@ export const agentHtmlSdk = String.raw`(() => {
   }
 
   function commentKeyFor(element) {
-    const target = element.closest('[data-comment-id], [data-field], [data-choice-field]');
+    const target = element.closest('[data-comment-id], [data-agent-auto-comment-id], [data-field], [data-choice-field]');
     if (!target) return null;
-    return target.dataset.commentId || target.dataset.field || target.dataset.choiceField;
+    return target.dataset.commentId || target.dataset.agentAutoCommentId || target.dataset.field || target.dataset.choiceField;
   }
 
   function commentsPath(key) {
@@ -272,11 +272,27 @@ export const agentHtmlSdk = String.raw`(() => {
     document.querySelectorAll('.agent-html-comment-target').forEach((element) => {
       element.classList.remove('agent-html-comment-target', 'agent-html-has-comments');
     });
-    document.querySelectorAll('[data-comment-id], [data-field], [data-choice-field]').forEach((element) => {
+    ensureAutoCommentTargets();
+    document.querySelectorAll('[data-comment-id], [data-agent-auto-comment-id], [data-field], [data-choice-field]').forEach((element) => {
       const key = commentKeyFor(element);
       if (!key) return;
       element.classList.add('agent-html-comment-target');
       element.classList.toggle('agent-html-has-comments', getComments(key).length > 0);
+    });
+  }
+
+  function ensureAutoCommentTargets() {
+    const selector = 'main article, main section, main tr, main li, main [role="row"], main .card, main .stat, main .alert';
+    document.querySelectorAll(selector).forEach((element, index) => {
+      if (
+        element.dataset.commentId ||
+        element.dataset.agentAutoCommentId ||
+        element.closest('.agent-html-toolbar, .agent-html-comment-popover')
+      ) {
+        return;
+      }
+      const label = compactText(element.textContent).slice(0, 48);
+      element.dataset.agentAutoCommentId = 'auto:' + element.tagName.toLowerCase() + ':' + index + ':' + label;
     });
   }
 
@@ -305,19 +321,19 @@ export const agentHtmlSdk = String.raw`(() => {
     const comments = getComments(key);
     popover.innerHTML = [
       '<div class="agent-html-comment-head">',
-      '<strong>Comments</strong>',
+      '<strong>Kommentar</strong>',
       '<button type="button" data-comment-close>×</button>',
       '</div>',
       '<div class="agent-html-comment-list">',
-      comments.length === 0 ? '<p>No comments yet.</p>' : comments.map((comment) => (
+      comments.length === 0 ? '<p>Noch keine Kommentare.</p>' : comments.map((comment) => (
         '<div class="agent-html-comment-item" data-comment-id="' + comment.id + '">' +
         '<textarea data-comment-edit>' + escapeTextarea(comment.text || '') + '</textarea>' +
-        '<div><button type="button" data-comment-update>Update</button><button type="button" data-comment-delete>Delete</button></div>' +
+        '<div><button type="button" data-comment-update>Aktualisieren</button><button type="button" data-comment-delete>Löschen</button></div>' +
         '</div>'
       )).join(''),
       '</div>',
-      '<textarea data-comment-new placeholder="Add a comment"></textarea>',
-      '<button type="button" data-comment-add>Add comment</button>'
+      '<textarea data-comment-new placeholder="Kommentar hinzufügen"></textarea>',
+      '<button type="button" data-comment-add>Kommentar speichern</button>'
     ].join('');
     popover.querySelector('[data-comment-close]').addEventListener('click', closeCommentPopover);
     popover.querySelector('[data-comment-add]').addEventListener('click', () => {
@@ -357,6 +373,10 @@ export const agentHtmlSdk = String.raw`(() => {
     return String(value).replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]));
   }
 
+  function compactText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
   function refreshChoiceControls() {
     document.querySelectorAll('[data-choice-field][data-choice-value]').forEach((element) => {
       const active = String(getNested(state, element.dataset.choiceField)) === String(element.dataset.choiceValue);
@@ -381,7 +401,8 @@ export const agentHtmlSdk = String.raw`(() => {
       '.agent-html-comment-target{position:relative}',
       '.agent-html-comment-target.agent-html-has-comments{outline:2px solid color-mix(in oklab,var(--color-primary,#60a5fa) 55%,transparent);outline-offset:2px}',
       '.agent-html-comment-target.agent-html-has-comments::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:999px;background:var(--color-primary,#60a5fa);box-shadow:0 0 0 2px var(--color-base-100,#111827)}',
-      '.agent-html-comment-mode .agent-html-comment-target{cursor:comment}',
+      '.agent-html-comment-mode .agent-html-comment-target{cursor:copy;outline:1px dashed color-mix(in oklab,var(--color-primary,#60a5fa) 38%,transparent);outline-offset:3px}',
+      '.agent-html-comment-mode .agent-html-comment-target:hover{outline:2px solid var(--color-primary,#60a5fa);box-shadow:0 0 0 4px color-mix(in oklab,var(--color-primary,#60a5fa) 16%,transparent)}',
       '.agent-html-comment-popover{position:fixed;z-index:2147483001;width:min(320px,calc(100vw - 24px));max-height:min(420px,calc(100vh - 24px));overflow:auto;font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
       '.agent-html-comment-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}',
       '.agent-html-comment-head button{border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer}',
@@ -420,16 +441,17 @@ export const agentHtmlSdk = String.raw`(() => {
   });
 
   document.addEventListener('click', (event) => {
+    const commentTarget = event.target?.closest?.('[data-comment-id], [data-agent-auto-comment-id], [data-field], [data-choice-field]');
+    if (commentMode && commentTarget && !event.target?.closest?.('.agent-html-toolbar, .agent-html-comment-popover')) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCommentPopover(commentTarget);
+      return;
+    }
     const choice = event.target?.closest?.('[data-choice-field][data-choice-value]');
     if (choice) {
       event.preventDefault();
       handleChoiceClick(choice);
-      return;
-    }
-    const commentTarget = event.target?.closest?.('[data-comment-id], [data-field], [data-choice-field]');
-    if (commentMode && commentTarget) {
-      event.preventDefault();
-      openCommentPopover(commentTarget);
       return;
     }
     if (event.target?.closest?.('[data-save]')) {

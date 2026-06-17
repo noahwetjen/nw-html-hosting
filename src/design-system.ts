@@ -102,7 +102,23 @@ body.agent-html-has-toolbar {
   background: var(--color-base-200);
   color: var(--color-base-content);
   padding: 0 10px;
+  cursor: pointer;
   font: inherit;
+}
+
+.agent-html-toolbar button:hover {
+  border-color: color-mix(in oklab, var(--color-primary) 58%, var(--color-base-content));
+  background: var(--color-base-300);
+}
+
+.agent-html-toolbar button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.agent-html-toolbar button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
 }
 
 .agent-html-toolbar button.is-active {
