@@ -156,7 +156,8 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
 
   app.get(/^\/d\/([^/]+)\/(.+)$/, async (req, res, next) => {
     try {
-      const [documentId, rawAssetPath] = req.params as unknown as [string, string];
+      const documentId = regexParam(req, 0);
+      const rawAssetPath = regexParam(req, 1);
       const assetPath = normalizeAssetPath(rawAssetPath);
       await documents.getPublic(documentId);
       await sendAsset(db, documentId, assetPath, res);
@@ -195,6 +196,14 @@ function requiredParam(req: Request, name: string): string {
   const value = req.params[name];
   if (!value || Array.isArray(value)) {
     throw new Error(`Missing route parameter: ${name}`);
+  }
+  return value;
+}
+
+function regexParam(req: Request, index: number): string {
+  const value = req.params[index];
+  if (!value || Array.isArray(value)) {
+    throw new Error(`Missing route parameter: ${index}`);
   }
   return value;
 }
