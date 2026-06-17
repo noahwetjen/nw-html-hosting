@@ -66,6 +66,7 @@ curl -X POST http://localhost:3000/api/documents \
   -d '{
     "title": "Migration Review",
     "html": "<!doctype html><html><body><label><input type=\"checkbox\" data-field=\"done\"> Done</label></body></html>",
+    "expiresAt": "2026-07-17T12:00:00.000Z",
     "state": { "done": false }
   }'
 ```
@@ -76,6 +77,7 @@ curl -X POST http://localhost:3000/api/documents \
 {
   "title": "Website Migration Review",
   "entryPath": "index.html",
+  "expiresAt": "2026-07-17T12:00:00.000Z",
   "files": [
     {
       "path": "index.html",
@@ -97,6 +99,16 @@ curl -X POST http://localhost:3000/api/documents \
   }
 }
 ```
+
+### Expiry
+
+Documents can have an optional `expiresAt` ISO timestamp.
+
+- Before `expiresAt`, public URLs and public state writes work normally.
+- After `expiresAt`, `/d/:id`, `/d/:id/...`, and `/api/public/documents/:id/state` return `410 Gone`.
+- The document, assets, and state are not deleted.
+- API and MCP tools with `HTML_HOSTING_API_KEY` can still list, read, update, and retrieve state.
+- Set `expiresAt: null` with `PUT /api/documents/:id` or `update_document` to make a document public again.
 
 ### Endpoints
 
@@ -205,6 +217,8 @@ Tools:
 - `get_document_state`
 - `update_document_state`
 - `patch_document_state`
+
+`create_document` and `update_document` accept `expiresAt`. Use an ISO timestamp to expire public access, or `null` to clear expiry.
 
 Example remote MCP config for clients that support Streamable HTTP:
 

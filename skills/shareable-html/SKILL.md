@@ -12,9 +12,10 @@ Use this skill when a user needs a shareable, browser-native review surface inst
 1. Build a focused HTML mini-site with clear labels and enough context for reviewers.
 2. Mark every editable field with a stable `data-field` path.
 3. Provide an initial JSON `state` with all expected keys.
-4. Upload with the `create_document` MCP tool.
-5. Give the user the returned public URL.
-6. After review, use `get_document_state` to retrieve the shared JSON state.
+4. Set `expiresAt` if the public link should stop working after a deadline.
+5. Upload with the `create_document` MCP tool.
+6. Give the user the returned public URL.
+7. After review, use `get_document_state` to retrieve the shared JSON state.
 
 ## HTML Rules
 
@@ -66,3 +67,5 @@ Custom JavaScript is allowed for page-specific functionality. Keep persistence s
 - `update_document_state`: overwrite shared state.
 - `patch_document_state`: update a few shared state fields.
 - `delete_document`: remove a document.
+
+`create_document` and `update_document` accept `expiresAt`. After expiry, public URLs return `410 Gone`, but MCP/API access still works. Set `expiresAt: null` to clear expiry and make the document public again.

@@ -6,6 +6,7 @@ export type DocumentRow = {
   title: string;
   entry_path: string;
   state: unknown;
+  expires_at: Date | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -46,9 +47,12 @@ export class Database {
           title text not null default '',
           entry_path text not null default 'index.html',
           state jsonb not null default '{}'::jsonb,
+          expires_at timestamptz,
           created_at timestamptz not null default now(),
           updated_at timestamptz not null default now()
         );
+
+        alter table documents add column if not exists expires_at timestamptz;
 
         create table if not exists assets (
           document_id text not null references documents(id) on delete cascade,
@@ -71,7 +75,7 @@ export class Database {
 
   async listDocuments(): Promise<DocumentRow[]> {
     const result = await this.pool.query<DocumentRow>(`
-      select id, title, entry_path, state, created_at, updated_at
+      select id, title, entry_path, state, expires_at, created_at, updated_at
       from documents
       order by updated_at desc
     `);
@@ -80,7 +84,7 @@ export class Database {
 
   async getDocument(id: string): Promise<DocumentRow | null> {
     const result = await this.pool.query<DocumentRow>(
-      `select id, title, entry_path, state, created_at, updated_at from documents where id = $1`,
+      `select id, title, entry_path, state, expires_at, created_at, updated_at from documents where id = $1`,
       [id]
     );
     return result.rows[0] ?? null;
@@ -91,6 +95,7 @@ export class Database {
     title: string;
     entryPath: string;
     state: unknown;
+    expiresAt: Date | null;
     files: Array<{ path: string; content: Buffer; mimeType: string }>;
   }): Promise<DocumentRow> {
     const client = await this.pool.connect();
@@ -98,11 +103,11 @@ export class Database {
       await client.query('begin');
       const docResult = await client.query<DocumentRow>(
         `
-          insert into documents (id, title, entry_path, state)
-          values ($1, $2, $3, $4::jsonb)
-          returning id, title, entry_path, state, created_at, updated_at
+          insert into documents (id, title, entry_path, state, expires_at)
+          values ($1, $2, $3, $4::jsonb, $5)
+          returning id, title, entry_path, state, expires_at, created_at, updated_at
         `,
-        [input.id, input.title, input.entryPath, JSON.stringify(input.state)]
+        [input.id, input.title, input.entryPath, JSON.stringify(input.state), input.expiresAt]
       );
 
       for (const file of input.files) {
@@ -130,6 +135,7 @@ export class Database {
     title?: string;
     entryPath?: string;
     state?: unknown;
+    expiresAt?: Date | null;
     files?: Array<{ path: string; content: Buffer; mimeType: string }>;
     replaceFiles: boolean;
   }): Promise<DocumentRow | null> {
@@ -137,7 +143,7 @@ export class Database {
     try {
       await client.query('begin');
       const existing = await client.query<DocumentRow>(
-        `select id, title, entry_path, state, created_at, updated_at from documents where id = $1 for update`,
+        `select id, title, entry_path, state, expires_at, created_at, updated_at from documents where id = $1 for update`,
         [input.id]
       );
       if (!existing.rows[0]) {
@@ -168,15 +174,18 @@ export class Database {
             title = coalesce($2, title),
             entry_path = coalesce($3, entry_path),
             state = coalesce($4::jsonb, state),
+            expires_at = case when $5::boolean then $6::timestamptz else expires_at end,
             updated_at = now()
           where id = $1
-          returning id, title, entry_path, state, created_at, updated_at
+          returning id, title, entry_path, state, expires_at, created_at, updated_at
         `,
         [
           input.id,
           input.title ?? null,
           input.entryPath ?? null,
-          input.state === undefined ? null : JSON.stringify(input.state)
+          input.state === undefined ? null : JSON.stringify(input.state),
+          input.expiresAt !== undefined,
+          input.expiresAt ?? null
         ]
       );
 
@@ -234,7 +243,7 @@ export class Database {
         update documents
         set state = $2::jsonb, updated_at = now()
         where id = $1
-        returning id, title, entry_path, state, created_at, updated_at
+        returning id, title, entry_path, state, expires_at, created_at, updated_at
       `,
       [documentId, JSON.stringify(state)]
     );
@@ -263,7 +272,7 @@ export class Database {
           update documents
           set state = $2::jsonb, updated_at = now()
           where id = $1
-          returning id, title, entry_path, state, created_at, updated_at
+          returning id, title, entry_path, state, expires_at, created_at, updated_at
         `,
         [documentId, JSON.stringify(nextState)]
       );

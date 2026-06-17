@@ -7,8 +7,9 @@ Use this service when HTML is a better review surface than Markdown: structured 
 1. Create one focused mini-site for the review task.
 2. Use `data-field` for every editable decision or note.
 3. Initialize `state` with all expected keys so the returned JSON is self-explanatory.
-4. Include visible labels, current source data, and enough context that a reviewer can decide without asking the agent.
-5. After the reviewer is done, call `get_document_state` and use the JSON as source of truth.
+4. Set `expiresAt` when the public review link should stop working after a deadline.
+5. Include visible labels, current source data, and enough context that a reviewer can decide without asking the agent.
+6. After the reviewer is done, call `get_document_state` and use the JSON as source of truth.
 
 ## Field Naming
 
@@ -70,3 +71,15 @@ When the user says the review is complete:
 3. Use the state to update the source plan, ticket, migration spreadsheet, or implementation.
 
 Use `patch_document_state` only when you intentionally want to update a few fields without replacing reviewer input elsewhere.
+
+## Expiry
+
+Use `expiresAt` to stop public access without deleting the document:
+
+```json
+{
+  "expiresAt": "2026-07-17T12:00:00.000Z"
+}
+```
+
+After expiry, public URLs return `410 Gone`, but MCP/API access still works. Use `expiresAt: null` to make the document public again.

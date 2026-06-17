@@ -85,6 +85,7 @@ function createMcpServer(config: AppConfig, db: Database): McpServer {
         html: z.string().optional().describe('Convenience field for a single HTML entry file.'),
         entryPath: z.string().default('index.html'),
         state: z.unknown().default({}).describe('Initial shared JSON state.'),
+        expiresAt: z.union([z.string(), z.null()]).optional().describe('Optional ISO date/time after which public access returns 410. MCP/API access remains available.'),
         files: z.array(z.object(fileInputShape)).default([])
       }
     },
@@ -120,6 +121,7 @@ function createMcpServer(config: AppConfig, db: Database): McpServer {
         html: z.string().optional(),
         entryPath: z.string().optional(),
         state: z.unknown().optional(),
+        expiresAt: z.union([z.string(), z.null()]).optional().describe('ISO date/time to expire public access, or null to make it public again.'),
         files: z.array(z.object(fileInputShape)).optional(),
         replaceFiles: z.boolean().default(false)
       }

@@ -7,6 +7,7 @@ import { agentHtmlSdk } from './browser-sdk.js';
 import {
   createDocumentSchema,
   DocumentsService,
+  ExpiredError,
   NotFoundError,
   updateDocumentSchema
 } from './documents.js';
@@ -116,7 +117,7 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
 
   app.get('/api/public/documents/:id/state', async (req, res, next) => {
     try {
-      res.json({ state: await documents.getState(requiredParam(req, 'id')) });
+      res.json({ state: await documents.getPublicState(requiredParam(req, 'id')) });
     } catch (error) {
       next(error);
     }
@@ -126,7 +127,7 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
     try {
       const body = stateBodySchema.parse(req.body);
       const state = 'state' in body ? body.state : body;
-      const document = await documents.updateState(requiredParam(req, 'id'), state);
+      const document = await documents.updatePublicState(requiredParam(req, 'id'), state);
       res.json({ state: document.state });
     } catch (error) {
       next(error);
@@ -136,7 +137,7 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
   app.patch('/api/public/documents/:id/state', async (req, res, next) => {
     try {
       const body = statePatchSchema.parse(req.body);
-      const document = await documents.patchState(requiredParam(req, 'id'), body.fields);
+      const document = await documents.patchPublicState(requiredParam(req, 'id'), body.fields);
       res.json({ state: document.state });
     } catch (error) {
       next(error);
@@ -146,7 +147,7 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
   app.get('/d/:id', async (req, res, next) => {
     try {
       const documentId = requiredParam(req, 'id');
-      const document = await documents.get(documentId);
+      const document = await documents.getPublic(documentId);
       await sendAsset(db, documentId, document.entryPath, res);
     } catch (error) {
       next(error);
@@ -157,6 +158,7 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
     try {
       const [documentId, rawAssetPath] = req.params as unknown as [string, string];
       const assetPath = normalizeAssetPath(rawAssetPath);
+      await documents.getPublic(documentId);
       await sendAsset(db, documentId, assetPath, res);
     } catch (error) {
       next(error);
@@ -209,7 +211,7 @@ function securityHeaders(_req: Request, res: Response, next: NextFunction) {
 function cors(req: Request, res: Response, next: NextFunction) {
   res.set({
     'access-control-allow-origin': '*',
-    'access-control-allow-methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization,x-api-key'
   });
   if (req.method === 'OPTIONS') {
@@ -252,6 +254,11 @@ function injectSdk(html: string): string {
 function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (error instanceof NotFoundError) {
     res.status(404).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof ExpiredError) {
+    res.status(410).json({ error: error.message });
     return;
   }
 

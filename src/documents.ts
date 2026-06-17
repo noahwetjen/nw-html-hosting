@@ -9,6 +9,8 @@ import { setNested } from './state-paths.js';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_FILES_PER_DOCUMENT = 100;
 
+const expiresAtSchema = z.union([z.string(), z.date(), z.null()]).optional();
+
 export const fileInputSchema = z.object({
   path: z.string().min(1),
   content: z.string(),
@@ -21,6 +23,7 @@ export const createDocumentSchema = z.object({
   html: z.string().optional(),
   entryPath: z.string().default('index.html'),
   state: z.unknown().default({}),
+  expiresAt: expiresAtSchema,
   files: z.array(fileInputSchema).default([])
 });
 
@@ -29,6 +32,7 @@ export const updateDocumentSchema = z.object({
   html: z.string().optional(),
   entryPath: z.string().optional(),
   state: z.unknown().optional(),
+  expiresAt: expiresAtSchema,
   files: z.array(fileInputSchema).optional(),
   replaceFiles: z.boolean().default(false)
 });
@@ -43,6 +47,9 @@ export type DocumentSummary = {
   url: string;
   entryPath: string;
   state: unknown;
+  expiresAt: string | null;
+  isExpired: boolean;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -60,6 +67,13 @@ export class NotFoundError extends Error {
   constructor(message = 'Not found') {
     super(message);
     this.name = 'NotFoundError';
+  }
+}
+
+export class ExpiredError extends Error {
+  constructor(message = 'Document is no longer publicly accessible') {
+    super(message);
+    this.name = 'ExpiredError';
   }
 }
 
@@ -95,6 +109,14 @@ export class DocumentsService {
     };
   }
 
+  async getPublic(id: string): Promise<DocumentDetail> {
+    const document = await this.get(id);
+    if (!document.isPublic) {
+      throw new ExpiredError(`Document ${id} is no longer publicly accessible`);
+    }
+    return document;
+  }
+
   async create(input: CreateDocumentInput): Promise<DocumentDetail> {
     const id = createPublicId();
     const entryPath = normalizeAssetPath(input.entryPath);
@@ -104,6 +126,7 @@ export class DocumentsService {
       title: input.title ?? '',
       entryPath,
       state: input.state ?? {},
+      expiresAt: normalizeExpiresAt(input.expiresAt),
       files
     });
     return {
@@ -134,6 +157,7 @@ export class DocumentsService {
       title: input.title,
       entryPath,
       state: input.state,
+      expiresAt: input.expiresAt === undefined ? undefined : normalizeExpiresAt(input.expiresAt),
       files,
       replaceFiles: input.replaceFiles
     });
@@ -156,12 +180,22 @@ export class DocumentsService {
     return state;
   }
 
+  async getPublicState(id: string): Promise<unknown> {
+    await this.getPublic(id);
+    return this.getState(id);
+  }
+
   async updateState(id: string, state: unknown): Promise<DocumentSummary> {
     const document = await this.db.updateState(id, state);
     if (!document) {
       throw new NotFoundError(`Document ${id} not found`);
     }
     return this.toSummary(document);
+  }
+
+  async updatePublicState(id: string, state: unknown): Promise<DocumentSummary> {
+    await this.getPublic(id);
+    return this.updateState(id, state);
   }
 
   async patchState(id: string, fields: Record<string, unknown>): Promise<DocumentSummary> {
@@ -176,6 +210,11 @@ export class DocumentsService {
       throw new NotFoundError(`Document ${id} not found`);
     }
     return this.toSummary(document);
+  }
+
+  async patchPublicState(id: string, fields: Record<string, unknown>): Promise<DocumentSummary> {
+    await this.getPublic(id);
+    return this.patchState(id, fields);
   }
 
   private prepareFiles(
@@ -237,10 +276,28 @@ export class DocumentsService {
       url: this.urlFor(document.id),
       entryPath: document.entry_path,
       state: document.state,
+      expiresAt: document.expires_at?.toISOString() ?? null,
+      isExpired: isExpired(document.expires_at),
+      isPublic: !isExpired(document.expires_at),
       createdAt: document.created_at.toISOString(),
       updatedAt: document.updated_at.toISOString()
     };
   }
+}
+
+export function isExpired(expiresAt: Date | string | null | undefined, now = new Date()): boolean {
+  if (!expiresAt) return false;
+  const date = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+  return date.getTime() <= now.getTime();
+}
+
+function normalizeExpiresAt(value: z.infer<typeof expiresAtSchema>): Date | null {
+  if (value === undefined || value === null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('expiresAt must be a valid ISO date string or Date.');
+  }
+  return date;
 }
 
 function isObjectLike(value: unknown): value is Record<string, unknown> | unknown[] {

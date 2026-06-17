@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isExpired } from '../src/documents.js';
 import { isHtmlPath, normalizeAssetPath } from '../src/paths.js';
 import { setNested } from '../src/state-paths.js';
 
@@ -37,5 +38,16 @@ describe('setNested', () => {
         }
       ]
     });
+  });
+});
+
+describe('isExpired', () => {
+  it('treats null expiry as public and past dates as expired', () => {
+    const now = new Date('2026-06-17T12:00:00.000Z');
+
+    expect(isExpired(null, now)).toBe(false);
+    expect(isExpired('2026-06-17T12:00:01.000Z', now)).toBe(false);
+    expect(isExpired('2026-06-17T12:00:00.000Z', now)).toBe(true);
+    expect(isExpired('2026-06-17T11:59:59.000Z', now)).toBe(true);
   });
 });
