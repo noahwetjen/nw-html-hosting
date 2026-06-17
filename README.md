@@ -162,6 +162,8 @@ Use daisyUI components first:
 
 Use Tailwind utility classes for layout and spacing. Avoid custom CSS unless the task needs a specific layout that components cannot express. Pages are dark mode by default. Add `data-agent-ui="off"` only when a page must opt out of automatic injection.
 
+For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate page headline, loading indicator, save button, or save-status label unless the user explicitly asks for custom chrome.
+
 ```html
 <input type="checkbox" data-field="pages.0.remove">
 <select data-field="pages.0.decision">
@@ -170,8 +172,6 @@ Use Tailwind utility classes for layout and spacing. Avoid custom CSS unless the
   <option value="merge">Merge</option>
 </select>
 <textarea data-field="pages.0.notes"></textarea>
-<button data-save>Save</button>
-<span data-save-status></span>
 ```
 
 The server injects `/agent-html-sdk.js` into HTML pages automatically. Agents may also include it explicitly:
@@ -246,7 +246,7 @@ Or use visual choice cards:
 
 The SDK marks the selected card with `is-selected` and saves the selected value to JSON.
 
-The SDK also adds a sticky document toolbar. It shows the document title, expiry status, save status, and comment count. Any element with `data-field`, `data-choice-field`, or explicit `data-comment-id` can receive comments. Comments are stored in shared state under `_comments`.
+The SDK also adds a fixed top document toolbar for interactive pages. It shows the document title, expiry status, save status, save action, comment mode, and comment count. Any element with `data-field`, `data-choice-field`, or explicit `data-comment-id` can receive comments. Comments are stored in shared state under `_comments`.
 
 ```html
 <section data-comment-id="hero-illustration-decision">

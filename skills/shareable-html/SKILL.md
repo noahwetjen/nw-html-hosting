@@ -41,6 +41,8 @@ The host injects Tailwind CSS Browser, daisyUI 5, `data-theme="dark"`, and a sma
 
 Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Avoid custom CSS unless the task needs a layout that component classes cannot express.
 
+For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate top headline, loading indicator, save button, or save-status label inside the agent-built body.
+
 ## HTML Rules
 
 - Use semantic HTML and a compact, practical UI.
@@ -61,8 +63,6 @@ Examples:
   <option value="merge">Merge</option>
 </select>
 <textarea data-field="pages.0.notes"></textarea>
-<button data-save>Save</button>
-<span data-save-status></span>
 ```
 
 The hosted service injects the state SDK automatically. You may explicitly add:
@@ -93,7 +93,7 @@ Use native radio/select inputs for simple choices. Use visual choice cards for i
 
 The SDK saves the selected value and adds `is-selected` to the active card.
 
-The SDK also provides a sticky toolbar with title, expiry, save status, and comment mode. Any `data-field` or `data-choice-field` can receive comments. For comments on a larger non-input element, add:
+The SDK also provides a fixed top toolbar for interactive pages with title, expiry, save status, save action, comment mode, and comment count. Any `data-field` or `data-choice-field` can receive comments. For comments on a larger non-input element, add:
 
 ```html
 <section data-comment-id="homepage-hero">...</section>

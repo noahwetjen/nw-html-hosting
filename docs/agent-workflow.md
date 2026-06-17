@@ -37,6 +37,8 @@ Use daisyUI component classes first:
 
 Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Do not invent a custom design system in CSS. Only add small task-specific CSS when daisyUI and Tailwind cannot express the required layout.
 
+For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate top headline, loading indicator, save button, or save-status label inside the agent-built body.
+
 ## Field Naming
 
 Prefer stable, descriptive paths:
@@ -102,7 +104,7 @@ The selected value is saved to the shared JSON state. Agents should initialize t
 
 ## Comments
 
-The hosted SDK adds a sticky toolbar with document title, expiry, save status, comment mode, and comment count.
+The hosted SDK adds a fixed top toolbar for interactive pages with document title, expiry, save status, save action, comment mode, and comment count.
 
 Any persisted field can receive comments automatically. For non-input elements, add a stable comment id:
 

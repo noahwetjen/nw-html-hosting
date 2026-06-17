@@ -18,24 +18,50 @@ body {
   min-height: 100vh;
 }
 
+body.agent-html-has-toolbar {
+  padding-top: calc(var(--agent-toolbar-height, 64px) + 12px);
+}
+
 /* Host chrome for shared comments/toolbars. Product UI should use daisyUI + Tailwind classes. */
 .agent-html-toolbar {
   position: fixed;
-  left: 50%;
-  bottom: 16px;
-  z-index: 9999;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2147483000;
   display: flex;
-  max-width: calc(100vw - 24px);
-  transform: translateX(-50%);
   align-items: center;
-  gap: 8px;
-  border: 1px solid color-mix(in oklab, var(--color-base-content) 16%, transparent);
-  border-radius: 12px;
-  background: color-mix(in oklab, var(--color-base-100) 92%, transparent);
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 16%, transparent);
+  background: color-mix(in oklab, var(--color-base-100) 94%, transparent);
   color: var(--color-base-content);
-  box-shadow: 0 18px 48px rgb(0 0 0 / .35);
-  padding: 8px;
+  box-shadow: 0 12px 36px rgb(0 0 0 / .32);
+  padding: 10px 16px;
   backdrop-filter: blur(16px);
+  font: 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.agent-html-toolbar-main,
+.agent-html-toolbar-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-html-toolbar-main strong {
+  overflow: hidden;
+  max-width: min(52vw, 720px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-html-toolbar-main span,
+.agent-html-toolbar-actions span {
+  color: color-mix(in oklab, var(--color-base-content) 68%, transparent);
+  white-space: nowrap;
 }
 
 .agent-html-toolbar button {
@@ -70,6 +96,24 @@ body {
   background: var(--color-base-200);
   padding: 10px;
 }
+
+@media (max-width: 720px) {
+  .agent-html-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 9px 12px;
+  }
+
+  .agent-html-toolbar-main,
+  .agent-html-toolbar-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .agent-html-toolbar-main strong {
+    max-width: calc(100vw - 24px);
+  }
+}
 `;
 
 export const designSystemGuide = {
@@ -86,6 +130,7 @@ export const designSystemGuide = {
     'Use Tailwind utility classes for layout, spacing, responsive grids, typography, and small adjustments.',
     'Do not write a separate design system in custom CSS. Only add minimal task-specific CSS when component classes cannot express the layout.',
     'Keep the first screen as the actual tool, not a marketing page.',
+    'Do not add a duplicate document header, save button, or loading indicator. The host toolbar shows the document title, expiry, save status, save action, comment mode, and comment count for interactive pages.',
     'Every editable decision, note, checkbox, radio, select, textarea, or input still needs a stable data-field path.'
   ],
   starterHtml: `<!doctype html>
@@ -99,13 +144,6 @@ export const designSystemGuide = {
 </head>
 <body class="min-h-screen bg-base-200 text-base-content">
   <main class="mx-auto max-w-7xl p-4 md:p-6">
-    <header class="navbar mb-4 rounded-box bg-base-100 shadow-sm">
-      <div class="flex-1">
-        <h1 class="text-xl font-semibold">Review Tool</h1>
-      </div>
-      <div class="badge badge-primary">Live State</div>
-    </header>
-
     <section class="grid gap-4 md:grid-cols-3">
       <article class="card bg-base-100 shadow-sm">
         <div class="card-body">

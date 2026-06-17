@@ -11,6 +11,7 @@ export const agentHtmlSdk = String.raw`(() => {
   let saving = false;
   let commentMode = false;
   let activeCommentTarget = null;
+  let toolbarResizeObserver = null;
 
   function parsePath(path) {
     return path
@@ -100,6 +101,7 @@ export const agentHtmlSdk = String.raw`(() => {
     refreshChoiceControls();
     refreshCommentMarkers();
     refreshToolbar();
+    setStatus('Gespeichert');
     document.dispatchEvent(new CustomEvent('agent-html-state-loaded', { detail: { state } }));
   }
 
@@ -132,7 +134,7 @@ export const agentHtmlSdk = String.raw`(() => {
   async function save() {
     if (saving) return state;
     saving = true;
-    setStatus('Saving...');
+    setStatus('Speichert...');
     collectState();
     const fields = collectDirtyFields();
     const body = JSON.stringify({ fields });
@@ -145,7 +147,7 @@ export const agentHtmlSdk = String.raw`(() => {
       if (!response.ok) throw new Error('Could not save document state');
       const payload = await response.json();
       applyState(payload.state || state);
-      setStatus('Saved');
+      setStatus('Gespeichert');
       document.dispatchEvent(new CustomEvent('agent-html-state-saved', { detail: { state } }));
       return state;
     } finally {
@@ -160,20 +162,21 @@ export const agentHtmlSdk = String.raw`(() => {
   }
 
   function scheduleSave() {
-    setStatus('Unsaved');
+    setStatus('Ungespeichert');
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       save().catch((error) => {
         console.error(error);
-        setStatus('Save failed');
+        setStatus('Speichern fehlgeschlagen');
       });
     }, 500);
   }
 
   function setupToolbar() {
     if (document.body.dataset.agentToolbar === 'off' || document.querySelector('.agent-html-toolbar')) return;
+    if (!hasInteractiveElements()) return;
     injectToolbarStyles();
-    const toolbar = document.createElement('div');
+    const toolbar = document.createElement('header');
     toolbar.className = 'agent-html-toolbar';
     toolbar.innerHTML = [
       '<div class="agent-html-toolbar-main">',
@@ -181,15 +184,37 @@ export const agentHtmlSdk = String.raw`(() => {
       '<span data-agent-toolbar-expiry></span>',
       '</div>',
       '<div class="agent-html-toolbar-actions">',
-      '<span data-agent-toolbar-status>Loading...</span>',
-      '<button type="button" data-agent-comment-mode>Comment</button>',
-      '<span data-agent-comment-count>0 comments</span>',
+      '<span data-agent-toolbar-status>Bereit</span>',
+      '<button type="button" data-agent-save>Speichern</button>',
+      '<button type="button" data-agent-comment-mode>Kommentieren</button>',
+      '<span data-agent-comment-count>0 Kommentare</span>',
       '</div>'
     ].join('');
-    document.body.appendChild(toolbar);
+    document.body.prepend(toolbar);
+    document.body.classList.add('agent-html-has-toolbar');
+    syncToolbarOffset();
+    toolbarResizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncToolbarOffset) : null;
+    toolbarResizeObserver?.observe(toolbar);
+    window.addEventListener('resize', syncToolbarOffset);
+    toolbar.querySelector('[data-agent-save]').addEventListener('click', () => {
+      save().catch((error) => {
+        console.error(error);
+        setStatus('Speichern fehlgeschlagen');
+      });
+    });
     toolbar.querySelector('[data-agent-comment-mode]').addEventListener('click', () => {
       setCommentMode(!commentMode);
     });
+  }
+
+  function hasInteractiveElements() {
+    return Boolean(document.querySelector('[data-field], [data-choice-field], [data-comment-id]'));
+  }
+
+  function syncToolbarOffset() {
+    const toolbar = document.querySelector('.agent-html-toolbar');
+    if (!toolbar) return;
+    document.documentElement.style.setProperty('--agent-toolbar-height', Math.ceil(toolbar.getBoundingClientRect().height) + 'px');
   }
 
   function refreshToolbar() {
@@ -205,7 +230,7 @@ export const agentHtmlSdk = String.raw`(() => {
     }
     if (count) {
       const comments = getAllComments();
-      count.textContent = comments.length + (comments.length === 1 ? ' comment' : ' comments');
+      count.textContent = comments.length + (comments.length === 1 ? ' Kommentar' : ' Kommentare');
     }
     if (button) button.classList.toggle('is-active', commentMode);
   }
@@ -353,27 +378,21 @@ export const agentHtmlSdk = String.raw`(() => {
     const style = document.createElement('style');
     style.dataset.agentHtmlSdkStyles = 'true';
     style.textContent = [
-      '.agent-html-toolbar{position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483000;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(31,41,55,.18);border-radius:8px;background:rgba(255,255,255,.96);box-shadow:0 12px 40px rgba(15,23,42,.16);backdrop-filter:blur(10px);font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827}',
-      '.agent-html-toolbar-main,.agent-html-toolbar-actions{display:flex;align-items:center;gap:10px;min-width:0}',
-      '.agent-html-toolbar-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:42vw}',
-      '.agent-html-toolbar button{border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#111827;padding:6px 8px;cursor:pointer}',
-      '.agent-html-toolbar button.is-active{background:#0b6bcb;border-color:#0b6bcb;color:#fff}',
       '.agent-html-comment-target{position:relative}',
-      '.agent-html-comment-target.agent-html-has-comments{outline:2px solid rgba(11,107,203,.35);outline-offset:2px}',
-      '.agent-html-comment-target.agent-html-has-comments::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:999px;background:#0b6bcb;box-shadow:0 0 0 2px #fff}',
+      '.agent-html-comment-target.agent-html-has-comments{outline:2px solid color-mix(in oklab,var(--color-primary,#60a5fa) 55%,transparent);outline-offset:2px}',
+      '.agent-html-comment-target.agent-html-has-comments::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:999px;background:var(--color-primary,#60a5fa);box-shadow:0 0 0 2px var(--color-base-100,#111827)}',
       '.agent-html-comment-mode .agent-html-comment-target{cursor:comment}',
-      '.agent-html-comment-popover{position:fixed;z-index:2147483001;width:min(320px,calc(100vw - 24px));max-height:min(420px,calc(100vh - 24px));overflow:auto;border:1px solid #d1d5db;border-radius:8px;background:#fff;box-shadow:0 14px 40px rgba(15,23,42,.22);padding:10px;font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827}',
+      '.agent-html-comment-popover{position:fixed;z-index:2147483001;width:min(320px,calc(100vw - 24px));max-height:min(420px,calc(100vh - 24px));overflow:auto;font:13px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
       '.agent-html-comment-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}',
       '.agent-html-comment-head button{border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer}',
       '.agent-html-comment-list{display:grid;gap:8px;margin-bottom:8px}',
-      '.agent-html-comment-list p{margin:0;color:#6b7280}',
-      '.agent-html-comment-item{display:grid;gap:6px;padding:8px;border:1px solid #e5e7eb;border-radius:6px;background:#f9fafb}',
+      '.agent-html-comment-list p{margin:0;color:color-mix(in oklab,var(--color-base-content,#e5e7eb) 64%,transparent)}',
+      '.agent-html-comment-item{display:grid;gap:6px}',
       '.agent-html-comment-item div{display:flex;gap:6px;justify-content:flex-end}',
-      '.agent-html-comment-popover textarea{width:100%;min-height:54px;resize:vertical;border:1px solid #d1d5db;border-radius:6px;padding:7px;font:inherit}',
-      '.agent-html-comment-popover button{border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#111827;padding:5px 7px;cursor:pointer}',
+      '.agent-html-comment-popover textarea{width:100%;min-height:54px;resize:vertical;border:1px solid color-mix(in oklab,var(--color-base-content,#e5e7eb) 18%,transparent);border-radius:8px;background:var(--color-base-200,#1f2937);color:var(--color-base-content,#e5e7eb);padding:7px;font:inherit}',
+      '.agent-html-comment-popover button{border:1px solid color-mix(in oklab,var(--color-base-content,#e5e7eb) 18%,transparent);border-radius:8px;background:var(--color-base-200,#1f2937);color:var(--color-base-content,#e5e7eb);padding:5px 7px;cursor:pointer}',
       '[data-choice-field][data-choice-value]{cursor:pointer}',
-      '[data-choice-field][data-choice-value].is-selected{outline:3px solid #0b6bcb;outline-offset:2px}',
-      '@media(max-width:720px){.agent-html-toolbar{left:8px;right:8px;bottom:8px;align-items:flex-start;flex-direction:column}.agent-html-toolbar-main strong{max-width:calc(100vw - 48px)}}'
+      '[data-choice-field][data-choice-value].is-selected{outline:3px solid var(--color-primary,#60a5fa);outline-offset:2px}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -417,7 +436,7 @@ export const agentHtmlSdk = String.raw`(() => {
       event.preventDefault();
       save().catch((error) => {
         console.error(error);
-        setStatus('Save failed');
+        setStatus('Speichern fehlgeschlagen');
       });
     }
   });
@@ -437,7 +456,10 @@ export const agentHtmlSdk = String.raw`(() => {
 
   function start() {
     setupToolbar();
-    load().catch(console.error);
+    load().catch((error) => {
+      console.error(error);
+      setStatus('Laden fehlgeschlagen');
+    });
   }
 
   if (document.readyState === 'loading') {

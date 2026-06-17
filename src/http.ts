@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AppConfig } from './config.js';
 import { Database } from './db.js';
 import { agentHtmlSdk } from './browser-sdk.js';
-import { agentHtmlHostCss, designSystemHeadTags } from './design-system.js';
+import { agentHtmlHostCss } from './design-system.js';
 import {
   createDocumentSchema,
   DocumentsService,
@@ -319,19 +319,28 @@ function injectDarkTheme(html: string): string {
 }
 
 function injectDesignSystem(html: string): string {
-  if (
-    html.includes('cdn.jsdelivr.net/npm/daisyui@5') ||
-    html.includes('data-agent-design-system="daisyui"') ||
-    /data-agent-ui=["']off["']/i.test(html) ||
-    /data-agent-theme=["']off["']/i.test(html)
-  ) {
+  if (/data-agent-ui=["']off["']/i.test(html) || /data-agent-theme=["']off["']/i.test(html)) {
     return html;
   }
 
+  const tags = [
+    html.includes('cdn.jsdelivr.net/npm/daisyui@5') || html.includes('data-agent-design-system="daisyui"')
+      ? ''
+      : '<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" data-agent-design-system="daisyui">',
+    html.includes('cdn.jsdelivr.net/npm/@tailwindcss/browser@4') || html.includes('data-agent-design-system="tailwind"')
+      ? ''
+      : '<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" data-agent-design-system="tailwind"></script>',
+    html.includes('/agent-html-host.css') || html.includes('data-agent-host-ui')
+      ? ''
+      : '<link rel="stylesheet" href="/agent-html-host.css" data-agent-host-ui>'
+  ].filter(Boolean).join('\n');
+
+  if (!tags) return html;
+
   if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${designSystemHeadTags}`);
+    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${tags}`);
   }
-  return `${designSystemHeadTags}\n${html}`;
+  return `${tags}\n${html}`;
 }
 
 function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
