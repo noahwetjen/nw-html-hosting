@@ -40,14 +40,14 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
   app.get('/agent-html-sdk.js', (_req, res) => {
     res
       .type('application/javascript; charset=utf-8')
-      .set('cache-control', 'public, max-age=300')
+      .set('cache-control', 'no-store')
       .send(agentHtmlSdk);
   });
 
   app.get(['/agent-html-host.css', '/agent-html-design-system.css'], (_req, res) => {
     res
       .type('text/css; charset=utf-8')
-      .set('cache-control', 'public, max-age=300')
+      .set('cache-control', 'no-store')
       .send(agentHtmlHostCss);
   });
 
