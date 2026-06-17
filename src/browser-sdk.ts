@@ -238,6 +238,7 @@ export const agentHtmlSdk = String.raw`(() => {
   function setCommentMode(enabled) {
     commentMode = enabled;
     document.body.classList.toggle('agent-html-comment-mode', enabled);
+    refreshCommentMarkers();
     refreshToolbar();
   }
 
