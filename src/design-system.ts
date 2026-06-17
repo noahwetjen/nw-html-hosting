@@ -14,8 +14,39 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
+html[data-theme="dark"],
+[data-theme="dark"] {
+  --color-base-100: #12161a;
+  --color-base-200: #0d1013;
+  --color-base-300: #242a31;
+  --color-base-content: #e7edf3;
+  --color-primary: #48b388;
+  --color-primary-content: #06120d;
+  --color-secondary: #91a4b7;
+  --color-secondary-content: #071017;
+  --color-accent: #5da9c8;
+  --color-accent-content: #061116;
+  --color-neutral: #171c22;
+  --color-neutral-content: #e7edf3;
+  --color-info: #6aa7d8;
+  --color-info-content: #061019;
+  --color-success: #58bd8b;
+  --color-success-content: #06120d;
+  --color-warning: #d6a545;
+  --color-warning-content: #1b1203;
+  --color-error: #e26d61;
+  --color-error-content: #170605;
+  --radius-selector: .35rem;
+  --radius-field: .3rem;
+  --radius-box: .45rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
 body {
   min-height: 100vh;
+  background: var(--color-base-200);
 }
 
 body.agent-html-has-toolbar {
@@ -129,6 +160,8 @@ export const designSystemGuide = {
     'Use daisyUI component classes first: btn, card, table, input, select, textarea, checkbox, radio, toggle, badge, alert, tabs, navbar, stats, modal, collapse.',
     'Use Tailwind utility classes for layout, spacing, responsive grids, typography, and small adjustments.',
     'Do not write a separate design system in custom CSS. Only add minimal task-specific CSS when component classes cannot express the layout.',
+    'Use the host-curated dark B2B palette. Avoid purple, pink, neon gradients, decorative gradient cards, and generic AI-dashboard visuals.',
+    'Prefer neutral surfaces with restrained status colors: primary for the main action, info for references, success for approved, warning for needs review, error for blocking/removal.',
     'Keep the first screen as the actual tool, not a marketing page.',
     'Do not add a duplicate document header, save button, or loading indicator. The host toolbar shows the document title, expiry, save status, save action, comment mode, and comment count for interactive pages.',
     'Every editable decision, note, checkbox, radio, select, textarea, or input still needs a stable data-field path.'

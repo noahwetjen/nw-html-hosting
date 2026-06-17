@@ -162,6 +162,8 @@ Use daisyUI components first:
 
 Use Tailwind utility classes for layout and spacing. Avoid custom CSS unless the task needs a specific layout that components cannot express. Pages are dark mode by default. Add `data-agent-ui="off"` only when a page must opt out of automatic injection.
 
+The host overrides daisyUI's default purple/pink theme with a restrained dark B2B palette. Keep generated apps quiet and operational: neutral surfaces, tight spacing, clear tables/cards/forms, and restrained status colors. Avoid purple, pink, neon gradients, decorative gradient cards, and generic AI-dashboard visuals.
+
 For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate page headline, loading indicator, save button, or save-status label unless the user explicitly asks for custom chrome.
 
 ```html

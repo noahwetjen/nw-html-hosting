@@ -225,8 +225,8 @@ export const agentHtmlSdk = String.raw`(() => {
     if (title) title.textContent = metadata?.title || document.title || 'Document';
     if (expiry) {
       expiry.textContent = metadata?.expiresAt
-        ? 'Expires ' + new Date(metadata.expiresAt).toLocaleString()
-        : 'No expiry';
+        ? 'Ablauf ' + new Date(metadata.expiresAt).toLocaleString()
+        : 'Kein Ablauf';
     }
     if (count) {
       const comments = getAllComments();

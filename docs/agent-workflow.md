@@ -37,6 +37,8 @@ Use daisyUI component classes first:
 
 Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Do not invent a custom design system in CSS. Only add small task-specific CSS when daisyUI and Tailwind cannot express the required layout.
 
+The host overrides daisyUI's default purple/pink theme with a restrained dark B2B palette. Generated apps should feel like operational review tools: neutral surfaces, tight spacing, clear hierarchy, and restrained status colors. Avoid purple, pink, neon gradients, decorative gradient cards, and generic AI-dashboard visuals.
+
 For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate top headline, loading indicator, save button, or save-status label inside the agent-built body.
 
 ## Field Naming

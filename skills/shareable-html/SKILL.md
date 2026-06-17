@@ -41,6 +41,8 @@ The host injects Tailwind CSS Browser, daisyUI 5, `data-theme="dark"`, and a sma
 
 Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Avoid custom CSS unless the task needs a layout that component classes cannot express.
 
+The host overrides daisyUI's default purple/pink theme with a restrained dark B2B palette. Generated apps should feel like operational review tools: neutral surfaces, tight spacing, clear hierarchy, and restrained status colors. Avoid purple, pink, neon gradients, decorative gradient cards, and generic AI-dashboard visuals.
+
 For interactive pages, the host toolbar already shows the document title, expiry, save status, save action, comment mode, and comment count. Do not add a duplicate top headline, loading indicator, save button, or save-status label inside the agent-built body.
 
 ## HTML Rules
