@@ -10,12 +10,28 @@ Use this skill when a user needs a shareable, browser-native review surface inst
 ## Workflow
 
 1. Build a focused HTML mini-site with clear labels and enough context for reviewers.
-2. Mark every editable field with a stable `data-field` path.
-3. Provide an initial JSON `state` with all expected keys.
-4. Set `expiresAt` if the public link should stop working after a deadline.
-5. Upload with the `create_document` MCP tool.
-6. Give the user the returned public URL.
-7. After review, use `get_document_state` to retrieve the shared JSON state.
+2. Use the built-in dark design system. Do not create a light-mode UI unless explicitly requested.
+3. Mark every editable field with a stable `data-field` path.
+4. Provide an initial JSON `state` with all expected keys.
+5. Set `expiresAt` if the public link should stop working after a deadline.
+6. Upload with the `create_document` MCP tool.
+7. Give the user the returned public URL.
+8. After review, use `get_document_state` to retrieve the shared JSON state.
+
+## Design System
+
+The host injects `/agent-html-design-system.css` automatically. Use semantic HTML plus these classes:
+
+- `agent-shell`
+- `agent-card`
+- `agent-grid`
+- `agent-table`
+- `agent-button`
+- `agent-button-primary`
+- `agent-choice`
+- `agent-badge`
+
+Custom CSS should use the design tokens `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger`.
 
 ## HTML Rules
 

@@ -131,6 +131,27 @@ Public state endpoints used by hosted pages:
 
 Any field with `data-field` is synced to the shared JSON state.
 
+### Design System
+
+Hosted pages automatically receive a lightweight dark-mode design system:
+
+```html
+<link rel="stylesheet" href="/agent-html-design-system.css">
+```
+
+Agents should use semantic HTML and these optional classes instead of inventing a new visual language every time:
+
+- `agent-shell`
+- `agent-card`
+- `agent-grid`
+- `agent-table`
+- `agent-button`
+- `agent-button-primary`
+- `agent-choice`
+- `agent-badge`
+
+The theme exposes variables such as `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger`. Pages are dark mode by default. Add `data-agent-theme="off"` only when a page must opt out.
+
 ```html
 <input type="checkbox" data-field="pages.0.remove">
 <select data-field="pages.0.decision">

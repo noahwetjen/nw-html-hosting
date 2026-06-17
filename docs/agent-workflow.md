@@ -5,11 +5,27 @@ Use this service when HTML is a better review surface than Markdown: structured 
 ## Build Pattern
 
 1. Create one focused mini-site for the review task.
-2. Use `data-field` for every editable decision or note.
-3. Initialize `state` with all expected keys so the returned JSON is self-explanatory.
-4. Set `expiresAt` when the public review link should stop working after a deadline.
-5. Include visible labels, current source data, and enough context that a reviewer can decide without asking the agent.
-6. After the reviewer is done, call `get_document_state` and use the JSON as source of truth.
+2. Use the built-in dark design system instead of writing a new visual style from scratch.
+3. Use `data-field` for every editable decision or note.
+4. Initialize `state` with all expected keys so the returned JSON is self-explanatory.
+5. Set `expiresAt` when the public review link should stop working after a deadline.
+6. Include visible labels, current source data, and enough context that a reviewer can decide without asking the agent.
+7. After the reviewer is done, call `get_document_state` and use the JSON as source of truth.
+
+## Design System
+
+The host injects `/agent-html-design-system.css` automatically. Build in dark mode by default and prefer these classes:
+
+- `agent-shell`
+- `agent-card`
+- `agent-grid`
+- `agent-table`
+- `agent-button`
+- `agent-button-primary`
+- `agent-choice`
+- `agent-badge`
+
+Use design variables such as `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger` for custom CSS.
 
 ## Field Naming
 

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AppConfig } from './config.js';
 import { Database } from './db.js';
 import { agentHtmlSdk } from './browser-sdk.js';
+import { agentHtmlDesignSystem } from './design-system.js';
 import {
   createDocumentSchema,
   DocumentsService,
@@ -41,6 +42,13 @@ export function createHttpApp(config: AppConfig, db: Database): express.Express 
       .type('application/javascript; charset=utf-8')
       .set('cache-control', 'public, max-age=300')
       .send(agentHtmlSdk);
+  });
+
+  app.get('/agent-html-design-system.css', (_req, res) => {
+    res
+      .type('text/css; charset=utf-8')
+      .set('cache-control', 'public, max-age=300')
+      .send(agentHtmlDesignSystem);
   });
 
   app.get('/api/documents', requireApiKey(config), async (_req, res, next) => {
@@ -271,6 +279,7 @@ async function sendAsset(db: Database, documentId: string, assetPath: string, re
 
 function injectHtmlShell(html: string, documentId: string): string {
   let nextHtml = injectBase(html, documentId);
+  nextHtml = injectDesignSystem(nextHtml);
   nextHtml = injectSdk(nextHtml);
   return nextHtml;
 }
@@ -298,6 +307,18 @@ function injectSdk(html: string): string {
     return html.replace('</body>', `${script}\n</body>`);
   }
   return `${html}\n${script}`;
+}
+
+function injectDesignSystem(html: string): string {
+  if (html.includes('/agent-html-design-system.css') || /data-agent-theme=["']off["']/i.test(html)) {
+    return html;
+  }
+
+  const stylesheet = '<link rel="stylesheet" href="/agent-html-design-system.css" data-agent-design-system>';
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `${stylesheet}\n</head>`);
+  }
+  return `${stylesheet}\n${html}`;
 }
 
 function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
