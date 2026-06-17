@@ -249,18 +249,35 @@ export const agentHtmlSdk = String.raw`(() => {
   }
 
   function commentsPath(key) {
+    return '_comments.' + commentStorageKey(key);
+  }
+
+  function legacyCommentsPath(key) {
     return '_comments.' + encodeURIComponent(key);
   }
 
+  function commentStorageKey(key) {
+    return encodeURIComponent(key).replace(/\./g, '%2E');
+  }
+
   function getComments(key) {
-    const comments = getNested(state, commentsPath(key));
+    let comments = getNested(state, commentsPath(key));
+    if (!Array.isArray(comments)) {
+      comments = getNested(state, legacyCommentsPath(key));
+    }
     return Array.isArray(comments) ? comments : [];
   }
 
   function getAllComments() {
     const container = state && typeof state === 'object' ? state._comments : null;
     if (!container || typeof container !== 'object') return [];
-    return Object.values(container).flatMap((value) => Array.isArray(value) ? value : []);
+    return flattenCommentValues(container);
+  }
+
+  function flattenCommentValues(value) {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== 'object') return [];
+    return Object.values(value).flatMap(flattenCommentValues);
   }
 
   function saveComments(key, comments) {
