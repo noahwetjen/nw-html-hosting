@@ -5,7 +5,7 @@ Use this service when HTML is a better review surface than Markdown: structured 
 ## Build Pattern
 
 1. Create one focused mini-site for the review task.
-2. Use the built-in dark design system instead of writing a new visual style from scratch.
+2. Call `get_design_system` and build with the returned Tailwind CSS Browser + daisyUI no-build UI kit.
 3. Use `data-field` for every editable decision or note.
 4. Initialize `state` with all expected keys so the returned JSON is self-explanatory.
 5. Set `expiresAt` when the public review link should stop working after a deadline.
@@ -14,18 +14,28 @@ Use this service when HTML is a better review surface than Markdown: structured 
 
 ## Design System
 
-The host injects `/agent-html-design-system.css` automatically. Build in dark mode by default and prefer these classes:
+The host injects Tailwind CSS Browser, daisyUI 5, `data-theme="dark"`, and the small host stylesheet needed for comments/toolbars. Agents can also call `get_design_system` to retrieve the same head tags, a starter HTML document, and component examples.
 
-- `agent-shell`
-- `agent-card`
-- `agent-grid`
-- `agent-table`
-- `agent-button`
-- `agent-button-primary`
-- `agent-choice`
-- `agent-badge`
+Use daisyUI component classes first:
 
-Use design variables such as `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger` for custom CSS.
+- `btn`
+- `card`
+- `table`
+- `input`
+- `select`
+- `textarea`
+- `checkbox`
+- `radio`
+- `toggle`
+- `badge`
+- `alert`
+- `tabs`
+- `navbar`
+- `stats`
+- `modal`
+- `collapse`
+
+Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Do not invent a custom design system in CSS. Only add small task-specific CSS when daisyUI and Tailwind cannot express the required layout.
 
 ## Field Naming
 

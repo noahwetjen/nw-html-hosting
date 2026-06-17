@@ -10,7 +10,7 @@ Use this skill when a user needs a shareable, browser-native review surface inst
 ## Workflow
 
 1. Build a focused HTML mini-site with clear labels and enough context for reviewers.
-2. Use the built-in dark design system. Do not create a light-mode UI unless explicitly requested.
+2. Call `get_design_system` and use the returned Tailwind CSS Browser + daisyUI no-build UI kit. Do not create a light-mode UI unless explicitly requested.
 3. Mark every editable field with a stable `data-field` path.
 4. Provide an initial JSON `state` with all expected keys.
 5. Set `expiresAt` if the public link should stop working after a deadline.
@@ -20,18 +20,26 @@ Use this skill when a user needs a shareable, browser-native review surface inst
 
 ## Design System
 
-The host injects `/agent-html-design-system.css` automatically. Use semantic HTML plus these classes:
+The host injects Tailwind CSS Browser, daisyUI 5, `data-theme="dark"`, and a small host stylesheet for comments/toolbars. Use semantic HTML plus daisyUI component classes:
 
-- `agent-shell`
-- `agent-card`
-- `agent-grid`
-- `agent-table`
-- `agent-button`
-- `agent-button-primary`
-- `agent-choice`
-- `agent-badge`
+- `btn`
+- `card`
+- `table`
+- `input`
+- `select`
+- `textarea`
+- `checkbox`
+- `radio`
+- `toggle`
+- `badge`
+- `alert`
+- `tabs`
+- `navbar`
+- `stats`
+- `modal`
+- `collapse`
 
-Custom CSS should use the design tokens `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger`.
+Use Tailwind utility classes for layout, spacing, responsive grids, and typography. Avoid custom CSS unless the task needs a layout that component classes cannot express.
 
 ## HTML Rules
 
@@ -95,6 +103,7 @@ Comments are saved in `_comments` in shared JSON state.
 
 ## MCP Tools
 
+- `get_design_system`: retrieve the no-build UI kit, head tags, starter HTML, and examples.
 - `create_document`: upload HTML or a full mini-site.
 - `update_document`: edit the HTML, assets, metadata, or state.
 - `list_documents`: find existing documents.

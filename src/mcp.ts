@@ -9,6 +9,7 @@ import {
   DocumentsService,
   updateDocumentSchema
 } from './documents.js';
+import { designSystemGuide } from './design-system.js';
 
 const fileInputShape = {
   path: z.string().describe('Relative file path such as index.html, styles.css, app.js, or assets/logo.png.'),
@@ -61,6 +62,18 @@ function createMcpServer(config: AppConfig, db: Database): McpServer {
     name: 'shareable-agent-html',
     version: '0.1.0'
   });
+
+  server.registerTool(
+    'get_design_system',
+    {
+      title: 'Get HTML app design system',
+      description: [
+        'Get the no-build UI kit for shareable HTML apps.',
+        'Use this before creating documents so generated pages use Tailwind CSS Browser and daisyUI components instead of custom styling.'
+      ].join(' ')
+    },
+    async () => jsonResult({ designSystem: designSystemGuide })
+  );
 
   server.registerTool(
     'list_documents',

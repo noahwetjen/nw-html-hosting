@@ -2,7 +2,7 @@
 
 Public, shareable HTML mini-sites for agents. The service hosts agent-created HTML/CSS/JS/images at random public URLs and keeps a shared JSON state for interactive fields.
 
-Target domain for production: `https://docs.wetjen.consulting`
+Target domain for production: `https://docs.wetjen.io`
 
 ## What It Does
 
@@ -21,14 +21,14 @@ Target domain for production: `https://docs.wetjen.consulting`
 3. Set these variables on the app service:
 
 ```sh
-PUBLIC_BASE_URL=https://docs.wetjen.consulting
+PUBLIC_BASE_URL=https://docs.wetjen.io
 HTML_HOSTING_API_KEY=<long random secret>
 DATABASE_URL=<Railway Postgres DATABASE_URL>
 NODE_ENV=production
 ```
 
-4. Add the custom domain `docs.wetjen.consulting` to the Railway service.
-5. Point the DNS record for `docs.wetjen.consulting` to Railway as instructed by Railway.
+4. Add the custom domain `docs.wetjen.io` to the Railway service.
+5. Point the DNS record for `docs.wetjen.io` to Railway as instructed by Railway.
 
 The app runs migrations automatically on startup.
 
@@ -133,24 +133,34 @@ Any field with `data-field` is synced to the shared JSON state.
 
 ### Design System
 
-Hosted pages automatically receive a lightweight dark-mode design system:
+Hosted pages automatically receive a no-build UI stack:
 
 ```html
-<link rel="stylesheet" href="/agent-html-design-system.css">
+<html data-theme="dark">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 ```
 
-Agents should use semantic HTML and these optional classes instead of inventing a new visual language every time:
+Agents should call `get_design_system` before creating review apps. The returned guide contains a starter document and component examples that work without a repo, npm install, or build step.
 
-- `agent-shell`
-- `agent-card`
-- `agent-grid`
-- `agent-table`
-- `agent-button`
-- `agent-button-primary`
-- `agent-choice`
-- `agent-badge`
+Use daisyUI components first:
 
-The theme exposes variables such as `--agent-bg`, `--agent-surface`, `--agent-text`, `--agent-muted`, `--agent-border`, `--agent-accent`, and `--agent-danger`. Pages are dark mode by default. Add `data-agent-theme="off"` only when a page must opt out.
+- `btn`
+- `card`
+- `table`
+- `input`
+- `select`
+- `textarea`
+- `checkbox`
+- `radio`
+- `toggle`
+- `badge`
+- `alert`
+- `tabs`
+- `navbar`
+- `stats`
+
+Use Tailwind utility classes for layout and spacing. Avoid custom CSS unless the task needs a specific layout that components cannot express. Pages are dark mode by default. Add `data-agent-ui="off"` only when a page must opt out of automatic injection.
 
 ```html
 <input type="checkbox" data-field="pages.0.remove">
@@ -249,7 +259,7 @@ The SDK also adds a sticky document toolbar. It shows the document title, expiry
 Remote Streamable HTTP MCP endpoint:
 
 ```text
-https://docs.wetjen.consulting/mcp
+https://docs.wetjen.io/mcp
 ```
 
 Required header:
@@ -260,6 +270,7 @@ Authorization: Bearer <HTML_HOSTING_API_KEY>
 
 Tools:
 
+- `get_design_system`
 - `list_documents`
 - `create_document`
 - `get_document`
@@ -277,7 +288,7 @@ Example remote MCP config for clients that support Streamable HTTP:
 {
   "mcpServers": {
     "shareable-agent-html": {
-      "url": "https://docs.wetjen.consulting/mcp",
+      "url": "https://docs.wetjen.io/mcp",
       "headers": {
         "Authorization": "Bearer ${HTML_HOSTING_API_KEY}"
       }
@@ -292,4 +303,4 @@ Example remote MCP config for clients that support Streamable HTTP:
 - Admin/API operations require `HTML_HOSTING_API_KEY`.
 - The API key is never sent to browser pages.
 - Hosted HTML may run JavaScript. This is intentionally flexible for agent-created mini-tools, but those pages should be treated like public pages and should not contain secrets.
-- Use a dedicated subdomain like `docs.wetjen.consulting` so arbitrary document JavaScript is isolated from other apps.
+- Use a dedicated subdomain like `docs.wetjen.io` so arbitrary document JavaScript is isolated from other apps.
